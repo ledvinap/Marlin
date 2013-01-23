@@ -77,51 +77,7 @@
 
 
 //// AUTOSET LOCATIONS OF LIMIT SWITCHES
-//// Added by ZetaPhoenix 09-15-2012
-#ifdef MANUAL_HOME_POSITIONS  // Use manual limit switch locations
-  #define X_HOME_POS MANUAL_X_HOME_POS
-  #define Y_HOME_POS MANUAL_Y_HOME_POS
-  #define Z_HOME_POS MANUAL_Z_HOME_POS
-#else //Set min/max homing switch positions based upon homing direction and min/max travel limits
-  //X axis
-  #if X_HOME_DIR == -1
-    #ifdef BED_CENTER_AT_0_0
-      #define X_HOME_POS X_MAX_LENGTH * -0.5
-    #else
-      #define X_HOME_POS X_MIN_POS
-    #endif //BED_CENTER_AT_0_0
-  #else    
-    #ifdef BED_CENTER_AT_0_0
-      #define X_HOME_POS X_MAX_LENGTH * 0.5
-    #else
-      #define X_HOME_POS X_MAX_POS
-    #endif //BED_CENTER_AT_0_0
-  #endif //X_HOME_DIR == -1
-  
-  //Y axis
-  #if Y_HOME_DIR == -1
-    #ifdef BED_CENTER_AT_0_0
-      #define Y_HOME_POS Y_MAX_LENGTH * -0.5
-    #else
-      #define Y_HOME_POS Y_MIN_POS
-    #endif //BED_CENTER_AT_0_0
-  #else    
-    #ifdef BED_CENTER_AT_0_0
-      #define Y_HOME_POS Y_MAX_LENGTH * 0.5
-    #else
-      #define Y_HOME_POS Y_MAX_POS
-    #endif //BED_CENTER_AT_0_0
-  #endif //Y_HOME_DIR == -1
-  
-  // Z axis
-  #if Z_HOME_DIR == -1 //BED_CENTER_AT_0_0 not used
-    #define Z_HOME_POS Z_MIN_POS
-  #else    
-    #define Z_HOME_POS Z_MAX_POS
-  #endif //Z_HOME_DIR == -1
-#endif //End auto min/max positions
-//END AUTOSET LOCATIONS OF LIMIT SWITCHES -ZP
-
+// calculated on runtime when default values are used
 
 //#define Z_LATE_ENABLE // Enable Z the last moment. Needed if your Z driver overheats.
 
@@ -143,7 +99,7 @@
 #define Z_HOME_RETRACT_MM 1 
 //#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
 
-#define AXIS_RELATIVE_MODES {false, false, false, false}
+#define AXIS_RELATIVE_MODES {false, false, false, true}
 
 #define MAX_STEP_FREQUENCY 40000 // Max step frequency for Ultimaker (5000 pps / half step)
 
@@ -154,7 +110,7 @@
 #define INVERT_E_STEP_PIN false
 
 //default stepper release if idle
-#define DEFAULT_STEPPER_DEACTIVE_TIME 60
+#define DEFAULT_STEPPER_DEACTIVE_TIME 0
 
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
@@ -192,7 +148,6 @@
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
-
 
 #define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
 #define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
@@ -236,7 +191,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // You can get round this by connecting a push button or single throw switch to the pin defined as SDCARDCARDDETECT 
 // in the pins.h file.  When using a push button pulling the pin to ground this will need inverted.  This setting should
 // be commented out otherwise
-#define SDCARDDETECTINVERTED 
+//#define SDCARDDETECTINVERTED 
 
 #ifdef ULTIPANEL
  #undef SDCARDDETECTINVERTED
@@ -266,7 +221,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // the moves are than replaced by the firmware controlled ones.
 
 // #define FWRETRACT  //ONLY PARTIALLY TESTED
-#define MIN_RETRACT 0.1 //minimum extruded mm to accept a automatic gcode retraction attempt
+//#define MIN_RETRACT 0.1 //minimum extruded mm to accept a automatic gcode retraction attempt
 
 //===========================================================================
 //=============================  Define Defines  ============================

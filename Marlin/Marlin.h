@@ -26,7 +26,7 @@
 #define  HardwareSerial_h // trick to disable the standard HWserial
 #endif
 
-#if (ARDUINO >= 100) && !defined(__AVR_ATmega644P__)
+#if (ARDUINO >= 100) && !defined(__AVR_ATmega644P__) && !defined(__AVR_ATmega1284P__)
 # include "Arduino.h"
 #else
 # include "WProgram.h"
@@ -185,6 +185,7 @@ extern float current_position[NUM_AXIS] ;
 extern float add_homeing[3];
 extern float min_pos[3];
 extern float max_pos[3];
+extern float home_pos[3];
 extern int fanSpeed;
 
 #ifdef FWRETRACT

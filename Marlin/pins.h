@@ -671,16 +671,17 @@
 #define E0_STEP_PIN         1
 #define E0_DIR_PIN          0
 
-#define LED_PIN            -1
-
-#define FAN_PIN            -1 
-#if FAN_PIN == 12 || FAN_PIN ==13
-#define FAN_SOFT_PWM
-#endif
 
 #ifdef MELZI
-#define LED_PIN            28
-#define FAN_PIN            4
+# define LED_PIN            28
+# define FAN_PIN            4
+#else
+# define LED_PIN            -1
+# define FAN_PIN            -1
+#endif
+
+#if FAN_PIN == 12 || FAN_PIN ==13
+# define FAN_SOFT_PWM
 #endif
 
 #define PS_ON_PIN          -1
@@ -713,10 +714,11 @@
 #define TEMP_2_PIN         -1
 #define TEMP_BED_PIN        6   // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!! (pin 34 bed)
 #define SDPOWER            -1
-#define SDSS               31
 
 #ifdef MELZI
-#define SDSS               24
+# define SDSS               24
+#else
+# define SDSS               31
 #endif
 
 #endif
@@ -728,10 +730,8 @@
 * Ultimaker pin assignment
 ******************************************************************/
 
-#ifndef __AVR_ATmega1280__
- #ifndef __AVR_ATmega2560__
+#if !defined(__AVR_ATmega1280__) && !defined(__AVR_ATmega2560__) && !defined(__AVR_ATmega1284P__)
  #error Oops!  Make sure you have 'Arduino Mega' selected from the 'Tools -> Boards' menu.
- #endif
 #endif
 
 #define X_STEP_PIN 25
