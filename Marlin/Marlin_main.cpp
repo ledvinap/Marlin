@@ -582,80 +582,141 @@ bool code_seen(char code)
   return (strchr_pointer != NULL);  //Return True if a character was found
 }
 
-#define DEFINE_PGM_READ_ANY(type, reader)		\
-    static inline type pgm_read_any(const type *p)	\
-	{ return pgm_read_##reader##_near(p); }
+// read endstop state
+// X_AXIS reads X_MIN_PIN
+// X_AXIS+ENDSTOP_MAX_OFFSET reads X_MAX_PIN
+// return -1 when endstop does not exist, 0 for open, positive value for hit
 
-DEFINE_PGM_READ_ANY(float,       float);
-DEFINE_PGM_READ_ANY(signed char, byte);
+#define ENDSTOP_MAX_OFFSET 3
+int8_t read_endstop(uint8_t endstop) {
+	switch(endstop) {
+#if X_MIN_PIN > -1
+	case X_AXIS: return (READ(X_MIN_PIN)^X_ENDSTOPS_INVERTING);
+#endif
+#if Y_MIN_PIN > -1
+	case Y_AXIS: return (READ(Y_MIN_PIN)^Y_ENDSTOPS_INVERTING);
+#endif
+#if Z_MIN_PIN > -1
+	case Z_AXIS: return (READ(Z_MIN_PIN)^Z_ENDSTOPS_INVERTING);
+#endif
+#if X_MAX_PIN > -1
+	case X_AXIS+ENDSTOP_MAX_OFFSET: return (READ(X_MAX_PIN)^X_ENDSTOPS_INVERTING);
+#endif
+#if Y_MAX_PIN > -1
+	case Y_AXIS+ENDSTOP_MAX_OFFSET: return (READ(Y_MAX_PIN)^Y_ENDSTOPS_INVERTING);
+#endif
+#if Z_MAX_PIN > -1
+	case Z_AXIS+ENDSTOP_MAX_OFFSET: return (READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING);
+#endif
+	}
+	return -1;
+}	
 
-#define XYZ_CONSTS_FROM_CONFIG(type, array, CONFIG)	\
-static const PROGMEM type array##_P[3] =		\
-    { X_##CONFIG, Y_##CONFIG, Z_##CONFIG };		\
-static inline type array(int axis)			\
-    { return pgm_read_any(&array##_P[axis]); }
-
-XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
-XYZ_CONSTS_FROM_CONFIG(signed char, home_dir,  HOME_DIR);
-
-inline float max_length(int axis) { return max_pos[axis]-min_pos[axis]; }
-
-static void homeaxis(int axis) {
-#define HOMEAXIS_DO(LETTER) \
-  ((LETTER##_MIN_PIN > -1 && LETTER##_HOME_DIR==-1) || (LETTER##_MAX_PIN > -1 && LETTER##_HOME_DIR==1))
-
-  if (axis==X_AXIS ? HOMEAXIS_DO(X) :
-      axis==Y_AXIS ? HOMEAXIS_DO(Y) :
-      axis==Z_AXIS ? HOMEAXIS_DO(Z) :
-      0) {
-
-        
-    // TODO - get off limit switch if it is triggered now
-    st_synchronize();
-
-    // move toward limit switch, try for 1.5*axis length
-    destination[axis] = current_position[axis] + 1.5 * max_length(axis) * home_dir(axis);
-    feedrate = homing_feedrate[axis];
-    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-    st_synchronize();
-    current_position[axis]=plan_update_position(axis);
-
-    // TODO - check that we hit limit
-   
-    // retract from limit switch
-    destination[axis] = current_position[axis] - home_retract_mm(axis) * home_dir(axis);
-    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-    st_synchronize();
-    current_position[axis]=plan_update_position(axis);
-
-    // TODO - check that we left limit
-   
-    // trip switch again, going slowly now
-    destination[axis] = current_position[axis] + 2*home_retract_mm(axis) * home_dir(axis);
-    feedrate = homing_feedrate[axis]/10 ;  // TODO - go slower or configure this speed
-    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
-    st_synchronize();
-    current_position[axis]=plan_update_position(axis);
-    // TODO - check that we hit limit
-    
-    
-    
-    // we just hit limit switch 
-    // TODO - check that limit is at expected position
-   SERIAL_ECHO_START;
-   SERIAL_ECHOPGM(MSG_ENDSTOPS_HIT);
-   SERIAL_ECHOPAIR("Home offset:",current_position[axis]-home_pos[axis]);
-   SERIAL_ECHOLN("");
-	
-	// update current position accordingly
-    current_position[axis]=home_pos[axis]; 
-    destination[axis] = current_position[axis];
-	plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-    feedrate = 0.0;
-    endstops_hit_on_purpose();
-  }
+inline float max_length(int axis) 
+{
+  return max_pos[axis]-min_pos[axis]; 
 }
-#define HOMEAXIS(LETTER) homeaxis(LETTER##_AXIS)
+
+// declare messages here for testing
+#define MSG_HOME_CANT_LEAVE_ENDSTOP "Failed to leave endstop when homing; axis:"
+#define MSG_HOME_CANT_HIT_ENDSTOP "Failed to trigger endstop when homing; axis:"
+#define MSG_HOMING_OK "Homing succeded with offsets "
+#define MSG_HOMING_FAILED "Homing of at least one axis failed; offsets "
+// home single axis
+// return true is homing succeeded. 
+// offset from expected home position is set if passed pointer is not null
+
+static bool homeaxis(int axis, float* offset) 
+{
+  const int8_t home_dir[]={X_HOME_DIR, Y_HOME_DIR, Z_HOME_DIR};
+  const float home_retract_mm[]={X_HOME_RETRACT_MM, Y_HOME_RETRACT_MM, Z_HOME_RETRACT_MM};
+
+  uint8_t endstop_idx=axis+((home_dir[axis]>0)?ENDSTOP_MAX_OFFSET:0);
+
+  st_synchronize();
+
+  int8_t endstop=read_endstop(endstop_idx);
+  if(endstop<0) {
+    if(offset) *offset=0;  // Set to some value
+    return true;  // no endstop for this axis and direction, bail out (but assume homing suceeded)
+  }  
+
+  feedrate = homing_feedrate[axis];
+  
+  if(endstop) 
+  {
+    // starting with closed endstop. Try to back-of by home_retract_mm few times.
+    int8_t tries=3;
+    do 
+    {
+      destination[axis] = current_position[axis] + -1.0*home_retract_mm[axis]*home_dir[axis];
+      plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+      st_synchronize();
+      current_position[axis]=plan_update_position(axis);   // Maybe we hit opposite endstop. 
+      endstop=read_endstop(endstop_idx);
+    } while(endstop && --tries);
+    if(!tries) // endstop is still closed, inform user and bail out
+    {
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPGM(MSG_HOME_CANT_LEAVE_ENDSTOP);
+      SERIAL_ECHOLN(axis_codes[axis]);
+      return false;      
+    }
+  }
+
+  // move toward limit switch, try for 1.5*axis length
+  destination[axis] = current_position[axis] + 1.5 * max_length(axis) * home_dir[axis];
+  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+  st_synchronize();
+  current_position[axis]=plan_update_position(axis);
+
+  if(!read_endstop(endstop_idx))     // endstop was not hit
+  {
+    SERIAL_ECHO_START;
+    SERIAL_ECHOPGM(MSG_HOME_CANT_HIT_ENDSTOP);
+    SERIAL_ECHOLN(axis_codes[axis]);
+    return false;    
+  }  
+  // retract from limit switch
+  destination[axis] = current_position[axis] + -1.0*home_retract_mm[axis]*home_dir[axis];
+  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+  st_synchronize();
+
+  if(read_endstop(endstop_idx))     // endstop is still closed
+  {
+    SERIAL_ECHO_START;
+    SERIAL_ECHOPGM(MSG_HOME_CANT_LEAVE_ENDSTOP);
+    SERIAL_ECHOLN(axis_codes[axis]);
+    return false;
+  }
+   
+  // trip switch again, going slowly now
+  destination[axis] = current_position[axis] + 2.0*home_retract_mm[axis]*home_dir[axis];
+  // this speed could be configurable. With large filtering capacitors (Melzi) the time constant is huge, so this has to be really slow.
+  // Factoring in time constant would be better (one step per tau?)
+  feedrate = homing_feedrate[axis]/10 ; 
+  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+  st_synchronize();
+  current_position[axis]=plan_update_position(axis);
+
+  if(!read_endstop(endstop_idx))     // endstop was not hit
+  {
+    SERIAL_ECHO_START;
+    SERIAL_ECHOPGM(MSG_HOME_CANT_HIT_ENDSTOP);
+    SERIAL_ECHOLN(axis_codes[axis]);
+    return false;
+  }
+ 	
+  // return home offset to caller if requested
+  if(offset) 
+    *offset=current_position[axis]-home_pos[axis];
+   
+	// update current position accordingly
+  destination[axis]=current_position[axis]=home_pos[axis]; 
+	plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+  feedrate = 0.0;
+  return true;
+}
 
 void process_commands()
 {
@@ -732,94 +793,93 @@ void process_commands()
       }
       break;
       #endif //FWRETRACT
-    case 28: {
+    case 28: 
+    {
       //G28 Home all Axis one at a time
       float saved_feedrate = feedrate;
+      float home_offset[3]={.0,.0,.0};
+      bool homing_ok=true;
+      
       int saved_feedmultiply = feedmultiply;
       feedmultiply = 100;
       previous_millis_cmd = millis();
       
       enable_endstops(true);
       
-      for(int8_t i=0; i < NUM_AXIS; i++) {
+      for(int8_t i=0; i < NUM_AXIS; i++)
         destination[i] = current_position[i];
-      }
+     
       feedrate = 0.0;
       bool home_all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS])));
   
-      // TODO - leave limit switches between each step
+#if Z_HOME_DIR > 0                      // If homing away from BED do Z first
+      if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) 
+      {
+        if(!homeaxis(Z_AXIS, &home_offset[Z_AXIS]))
+          homing_ok=false;
+      }      
+#endif
       
-      #if Z_HOME_DIR > 0                      // If homing away from BED do Z first
-      if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) {
-        HOMEAXIS(Z);
-      }
-      #endif
-      
-      #ifdef QUICK_HOME
+#ifdef QUICK_HOME
       // move diagonally toward X/Y limit switches, stop after first is hit
       if((home_all_axis)||( code_seen(axis_codes[X_AXIS]) && code_seen(axis_codes[Y_AXIS])) ) 
       {
         st_synchronize();
 
-        destination[X_AXIS] += 1.5 * max_length(X_AXIS) * home_dir(X_AXIS); 
-        destination[Y_AXIS] += 1.5 * max_length(Y_AXIS) * home_dir(Y_AXIS);   
+        destination[X_AXIS] += 1.5 * max_length(X_AXIS) * home_dir[X_AXIS]; 
+        destination[Y_AXIS] += 1.5 * max_length(Y_AXIS) * home_dir[Y_AXIS];   
         feedrate = min(homing_feedrate[X_AXIS], homing_feedrate[Y_AXIS]);
         plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
         st_synchronize();
-		// update position if limit switch is hit
+    		// update position, limit switch should be hit
         current_position[X_AXIS]=plan_update_position(X_AXIS);
-        current_position[Y_AXIS]=plan_update_position(Y_AXIS);
-        endstops_hit_on_purpose();   // TODO ? 
+        current_position[Y_AXIS]=plan_update_position(Y_AXIS);            
+        // TODO - maybe move Y-axis to home - axes may affect each other, so it could be better to have Y in defined position 
       }
-      #endif
+#endif
       
       if((home_all_axis) || (code_seen(axis_codes[X_AXIS]))) 
       {
-        HOMEAXIS(X);
+        if(!homeaxis(X_AXIS, &home_offset[X_AXIS]))
+          homing_ok=false;
       }
 
-      if((home_all_axis) || (code_seen(axis_codes[Y_AXIS]))) {
-        HOMEAXIS(Y);
+      if((home_all_axis) || (code_seen(axis_codes[Y_AXIS])))
+      {
+        if(!homeaxis(Y_AXIS, &home_offset[Y_AXIS]))
+          homing_ok=false;
       }
       
-      #if Z_HOME_DIR < 0                      // If homing towards BED do Z last
-      if((home_all_axis) || (code_seen(axis_codes[Z_AXIS]))) {
-        HOMEAXIS(Z);
-      }
-      #endif
-
-#if 0      
-      if(code_seen(axis_codes[X_AXIS])) 
+#if Z_HOME_DIR < 0                      // If homing towards BED do Z last
+      if((home_all_axis) || (code_seen(axis_codes[Z_AXIS])))
       {
-        if(code_value_long() != 0) {
-          current_position[X_AXIS]=code_value()+add_homeing[0];
-        }
-      }
-
-      if(code_seen(axis_codes[Y_AXIS])) {
-        if(code_value_long() != 0) {
-          current_position[Y_AXIS]=code_value()+add_homeing[1];
-        }
-      }
-
-      if(code_seen(axis_codes[Z_AXIS])) {
-        if(code_value_long() != 0) {
-          current_position[Z_AXIS]=code_value()+add_homeing[2];
-        }
+        if(!homeaxis(Z_AXIS, &home_offset[Z_AXIS]))
+          homing_ok=false;
       }
 #endif
 
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-      
-      #ifdef ENDSTOPS_ONLY_FOR_HOMING
-        enable_endstops(false);
-      #endif
+// report homing offsets    
+      SERIAL_ECHO_START;
+      if(homing_ok) {
+        SERIAL_ECHOPGM(MSG_HOMING_OK);
+      } else {
+        SERIAL_ECHOPGM(MSG_HOMING_FAILED);
+      }        
+      SERIAL_ECHOPAIR(" X:",home_offset[X_AXIS]);
+      SERIAL_ECHOPAIR(" Y:",home_offset[Y_AXIS]);
+      SERIAL_ECHOPAIR(" Z:",home_offset[Z_AXIS]);
+      SERIAL_ECHOLN("");
+
+#ifdef ENDSTOPS_ONLY_FOR_HOMING
+      enable_endstops(false);
+#endif
       
       feedrate = saved_feedrate;
       feedmultiply = saved_feedmultiply;
       previous_millis_cmd = millis();
       endstops_hit_on_purpose();
-    } break;
+    } 
+    break;
     case 90: // G90
       relative_mode = false;
       break;
@@ -1179,7 +1239,7 @@ void process_commands()
       }
       else
       { 
-        bool all_axis = !((code_seen(axis_codes[0])) || (code_seen(axis_codes[1])) || (code_seen(axis_codes[2]))|| (code_seen(axis_codes[3])));
+        bool all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS]))|| (code_seen(axis_codes[E_AXIS])));
         if(all_axis)
         {
           st_synchronize();
@@ -1191,11 +1251,11 @@ void process_commands()
         else
         {
           st_synchronize();
-          if(code_seen('X')) disable_x();
-          if(code_seen('Y')) disable_y();
-          if(code_seen('Z')) disable_z();
+          if(code_seen(axis_codes[X_AXIS])) disable_x();
+          if(code_seen(axis_codes[Y_AXIS])) disable_y();
+          if(code_seen(axis_codes[Z_AXIS])) disable_z();
           #if ((E0_ENABLE_PIN != X_ENABLE_PIN) && (E1_ENABLE_PIN != Y_ENABLE_PIN)) // Only enable on boards that have seperate ENABLE_PINS
-            if(code_seen('E')) {
+            if(code_seen(axis_codes[E_AXIS])) {
               disable_e0();
               disable_e1();
               disable_e2();
@@ -1213,7 +1273,7 @@ void process_commands()
       {
         if(code_seen(axis_codes[i])) 
         {
-          if(i == 3) { // E
+          if(i == E_AXIS) { // E
             float value = code_value();
             if(value < 20.0) {
               float factor = axis_steps_per_unit[i] / value; // increase e constants if M92 E14 is given for netfab.
@@ -1222,8 +1282,7 @@ void process_commands()
               axis_steps_per_sqr_second[i] *= factor;
             }
             axis_steps_per_unit[i] = value;
-          }
-          else {
+          } else {
             axis_steps_per_unit[i] = code_value();
           }
         }
@@ -1264,33 +1323,19 @@ void process_commands()
       enable_endstops(true) ;
       break;
     case 119: // M119
-    SERIAL_PROTOCOLLN(MSG_M119_REPORT);
-      #if (X_MIN_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_X_MIN);
-        SERIAL_PROTOCOLLN(((READ(X_MIN_PIN)^X_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if (X_MAX_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_X_MAX);
-        SERIAL_PROTOCOLLN(((READ(X_MAX_PIN)^X_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if (Y_MIN_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_Y_MIN);
-        SERIAL_PROTOCOLLN(((READ(Y_MIN_PIN)^Y_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if (Y_MAX_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_Y_MAX);
-        SERIAL_PROTOCOLLN(((READ(Y_MAX_PIN)^Y_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if (Z_MIN_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_Z_MIN);
-        SERIAL_PROTOCOLLN(((READ(Z_MIN_PIN)^Z_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if (Z_MAX_PIN > -1)
-        SERIAL_PROTOCOLPGM(MSG_Z_MAX);
-        SERIAL_PROTOCOLLN(((READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
+		  SERIAL_PROTOCOLLN(MSG_M119_REPORT);
+		  for(int8_t i=0; i <= Z_AXIS; i++) { 
+				PGM_P min_msg[]={PSTR(MSG_X_MIN), PSTR(MSG_Y_MIN), PSTR(MSG_Z_MIN)};
+				PGM_P max_msg[]={PSTR(MSG_X_MAX), PSTR(MSG_Y_MAX), PSTR(MSG_Z_MAX)};
+				for(uint8_t j=0;j<2;j++) {
+					int8_t val=read_endstop(i+(j?ENDSTOP_MAX_OFFSET:0));
+					if(val>=0) {
+			  		serialprintPGM(j?min_msg[i]:max_msg[i]);
+						SERIAL_PROTOCOLLN(val?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN);
+					}			
+				}
+			}			
       break;
-      //TODO: update for all axis, use for loop
     case 201: // M201
       for(int8_t i=0; i < NUM_AXIS; i++) 
       {
@@ -1332,7 +1377,7 @@ void process_commands()
     case 206: // M206 additional homing offset / soft limit and home position
       if(code_seen('P')) {
         int t=code_value();
-		bool relative=code_seen('R');
+		    bool relative=code_seen('R');
         switch(t) {
         case 1: // set min limits
           for(int8_t i=0; i < 3; i++) 
@@ -1347,12 +1392,12 @@ void process_commands()
             if(code_seen(axis_codes[i])) home_pos[i] = relative?(home_pos[i]+code_value()):code_value();;
           break;
         default:
-            SERIAL_ECHO_START;
-            SERIAL_ECHOPGM(MSG_UNKNOWN_COMMAND);
-            SERIAL_ECHO(cmdbuffer[bufindr]);
-            SERIAL_ECHOLNPGM("\"");        
+          SERIAL_ECHO_START;
+          SERIAL_ECHOPGM(MSG_UNKNOWN_COMMAND);
+          SERIAL_ECHO(cmdbuffer[bufindr]);
+          SERIAL_ECHOLNPGM("\"");        
         }        
-      } else {  // backward-compatible behaviour, which I don't understand, just trying to emulate it
+      } else {  // backward-compatible behavior, which I don't understand, just trying to emulate it
         for(int8_t i=0; i < 3; i++) 
           if(code_seen(axis_codes[i])) {
             float old=add_homeing[i];
@@ -1365,41 +1410,26 @@ void process_commands()
       }
       break;
       
-    #ifdef FWRETRACT
+#ifdef FWRETRACT
     case 207: //M207 - set retract length S[positive mm] F[feedrate mm/sec] Z[additional zlift/hop]
-    {
       if(code_seen('S')) 
-      {
         retract_length = code_value() ;
-      }
       if(code_seen('F')) 
-      {
         retract_feedrate = code_value() ;
-      }
       if(code_seen('Z')) 
-      {
         retract_zlift = code_value() ;
-      }
-    }break;
+      break;
     case 208: // M208 - set retract recover length S[positive mm surplus to the M207 S*] F[feedrate mm/sec]
-    {
       if(code_seen('S')) 
-      {
         retract_recover_length = code_value() ;
-      }
       if(code_seen('F')) 
-      {
         retract_recover_feedrate = code_value() ;
-      }
-    }break;
+      break;
     
     case 209: // M209 - S<1=true/0=false> enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
-    {
-      if(code_seen('S')) 
-      {
+      if(code_seen('S')) {
         int t= code_value() ;
-        switch(t)
-        {
+        switch(t) {
           case 0: autoretract_enabled=false;retracted=false;break;
           case 1: autoretract_enabled=true;retracted=false;break;
           default: 
@@ -1409,52 +1439,43 @@ void process_commands()
             SERIAL_ECHOLNPGM("\"");
         }
       }
-      
-    }break;
-    #endif
+      break;
+#endif
     case 220: // M220 S<factor in percent>- set speed factor override percentage
-    {
       if(code_seen('S')) 
-      {
         feedmultiply = code_value() ;
-      }
-    }
-    break;
+      break;
     case 221: // M221 S<factor in percent>- set extrude factor override percentage
-    {
       if(code_seen('S')) 
-      {
         extrudemultiply = code_value() ;
-      }
-    }
-    break;
+      break;
 
-    #ifdef PIDTEMP
+#ifdef PIDTEMP
     case 301: // M301
       {
         if(code_seen('P')) Kp = code_value();
         if(code_seen('I')) Ki = code_value()*PID_dT;
         if(code_seen('D')) Kd = code_value()/PID_dT;
-        #ifdef PID_ADD_EXTRUSION_RATE
+# ifdef PID_ADD_EXTRUSION_RATE
         if(code_seen('C')) Kc = code_value();
-        #endif
+# endif
         updatePID();
         SERIAL_PROTOCOL(MSG_OK);
-		SERIAL_PROTOCOL(" p:");
+    		SERIAL_PROTOCOL(" p:");
         SERIAL_PROTOCOL(Kp);
         SERIAL_PROTOCOL(" i:");
         SERIAL_PROTOCOL(Ki/PID_dT);
         SERIAL_PROTOCOL(" d:");
         SERIAL_PROTOCOL(Kd*PID_dT);
-        #ifdef PID_ADD_EXTRUSION_RATE
+# ifdef PID_ADD_EXTRUSION_RATE
         SERIAL_PROTOCOL(" c:");
         SERIAL_PROTOCOL(Kc*PID_dT);
-        #endif
+# endif
         SERIAL_PROTOCOLLN("");
       }
       break;
-    #endif //PIDTEMP
-    #ifdef PIDTEMPBED
+#endif //PIDTEMP
+#ifdef PIDTEMPBED
     case 304: // M304
       {
         if(code_seen('P')) bedKp = code_value();
@@ -1462,7 +1483,7 @@ void process_commands()
         if(code_seen('D')) bedKd = code_value()/PID_dT;
         updatePID();
         SERIAL_PROTOCOL(MSG_OK);
-		SERIAL_PROTOCOL(" p:");
+    		SERIAL_PROTOCOL(" p:");
         SERIAL_PROTOCOL(bedKp);
         SERIAL_PROTOCOL(" i:");
         SERIAL_PROTOCOL(bedKi/PID_dT);
@@ -1471,11 +1492,10 @@ void process_commands()
         SERIAL_PROTOCOLLN("");
       }
       break;
-    #endif //PIDTEMP
+#endif //PIDTEMP
     case 240: // M240  Triggers a camera by emulating a Canon RC-1 : http://www.doc-diy.net/photo/rc-1_hacked/
-     {
-      #ifdef PHOTOGRAPH_PIN
-        #if (PHOTOGRAPH_PIN > -1)
+    {
+#if defined(PHOTOGRAPH_PIN) && (PHOTOGRAPH_PIN > -1)
         const uint8_t NUM_PULSES=16;
         const float PULSE_LENGTH=0.01524;
         for(int i=0; i < NUM_PULSES; i++) {
@@ -1491,16 +1511,13 @@ void process_commands()
           WRITE(PHOTOGRAPH_PIN, LOW);
           _delay_ms(PULSE_LENGTH);
         }
-        #endif
-      #endif
-     }
+#endif
+    }
     break;
       
     case 302: // allow cold extrudes
-    {
       allow_cold_extrudes(true);
-    }
-    break;
+      break;
     case 303: // M303 PID autotune
     {
       float temp = 150.0;
@@ -1515,74 +1532,80 @@ void process_commands()
     }
     break;
     case 400: // M400 finish all moves
-    {
       st_synchronize();
-    }
-    break;
+      break;
     case 500: // M500 Store settings in EEPROM
-    {
-        Config_StoreSettings();
-    }
-    break;
+      Config_StoreSettings();
+      break;
     case 501: // M501 Read settings from EEPROM
-    {
-        Config_RetrieveSettings();
-    }
-    break;
+      Config_RetrieveSettings();
+      break;
     case 502: // M502 Revert to default settings
-    {
-        Config_ResetDefault();
-    }
-    break;
+      Config_ResetDefault();
+      break;
     case 503: // M503 print settings currently in memory
-    {
-        Config_PrintSettings();
-    }
-    break;
+      Config_PrintSettings();
+      break;
     case 907: // M907 Set digital trimpot motor current using axis codes.
     {
-      #if DIGIPOTSS_PIN > -1
-        for(int i=0;i<=NUM_AXIS;i++) if(code_seen(axis_codes[i])) digipot_current(i,code_value());
-        if(code_seen('B')) digipot_current(4,code_value());
-        if(code_seen('S')) for(int i=0;i<=4;i++) digipot_current(i,code_value());
-      #endif
+#if DIGIPOTSS_PIN > -1
+      for(int i=0;i<=NUM_AXIS;i++) 
+        if(code_seen(axis_codes[i])) 
+          digipot_current(i,code_value());
+      if(code_seen('B')) 
+        digipot_current(4,code_value());
+      if(code_seen('S')) 
+        for(int i=0;i<=4;i++)
+          digipot_current(i,code_value());
+#endif
     }
     case 908: // M908 Control digital trimpot directly.
     {
-      #if DIGIPOTSS_PIN > -1
-        uint8_t channel,current;
-        if(code_seen('P')) channel=code_value();
-        if(code_seen('S')) current=code_value();
-        digitalPotWrite(channel, current);
-      #endif
+#if DIGIPOTSS_PIN > -1
+      uint8_t channel,current;
+      if(code_seen('P')) channel=code_value();
+      if(code_seen('S')) current=code_value();
+      digitalPotWrite(channel, current);
+#endif
     }
     break;
     case 350: // M350 Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
     {
-      #if X_MS1_PIN > -1
-        if(code_seen('S')) for(int i=0;i<=4;i++) microstep_mode(i,code_value()); 
-        for(int i=0;i<=NUM_AXIS;i++) if(code_seen(axis_codes[i])) microstep_mode(i,(uint8_t)code_value());
-        if(code_seen('B')) microstep_mode(4,code_value());
-        microstep_readings();
-      #endif
+#if X_MS1_PIN > -1
+      if(code_seen('S')) 
+        for(int i=0;i<=4;i++) 
+          microstep_mode(i,code_value()); 
+      for(int i=0;i<=NUM_AXIS;i++) 
+        if(code_seen(axis_codes[i])) 
+          microstep_mode(i,(uint8_t)code_value());
+      if(code_seen('B')) microstep_mode(4,code_value());
+      microstep_readings();
+#endif
     }
     break;
     case 351: // M351 Toggle MS1 MS2 pins directly, S# determines MS1 or MS2, X# sets the pin high/low.
     {
-      #if X_MS1_PIN > -1
-      if(code_seen('S')) switch((int)code_value())
-      {
+#if X_MS1_PIN > -1
+      if(code_seen('S')) {
+        switch((int)code_value()) {
         case 1:
-          for(int i=0;i<=NUM_AXIS;i++) if(code_seen(axis_codes[i])) microstep_ms(i,code_value(),-1);
-          if(code_seen('B')) microstep_ms(4,code_value(),-1);
+          for(int i=0;i<=NUM_AXIS;i++) 
+            if(code_seen(axis_codes[i])) 
+              microstep_ms(i,code_value(),-1);
+          if(code_seen('B')) 
+            microstep_ms(4,code_value(),-1);
           break;
         case 2:
-          for(int i=0;i<=NUM_AXIS;i++) if(code_seen(axis_codes[i])) microstep_ms(i,-1,code_value());
-          if(code_seen('B')) microstep_ms(4,-1,code_value());
+          for(int i=0;i<=NUM_AXIS;i++)
+            if(code_seen(axis_codes[i]))
+              microstep_ms(i,-1,code_value());
+          if(code_seen('B')) 
+            microstep_ms(4,-1,code_value());
           break;
-      }
+        }
+      }  
       microstep_readings();
-      #endif
+#endif
     }
     break;
     case 999: // M999: Restart after being stopped
@@ -1590,10 +1613,9 @@ void process_commands()
       lcd_reset_alert_level();
       gcode_LastN = Stopped_gcode_LastN;
       FlushSerialRequestResend();
-    break;
+      break;
     }
   }
-
   else if(code_seen('T')) 
   {
     tmp_extruder = code_value();
@@ -1610,7 +1632,6 @@ void process_commands()
       SERIAL_PROTOCOLLN((int)active_extruder);
     }
   }
-
   else
   {
     SERIAL_ECHO_START;
@@ -1618,7 +1639,6 @@ void process_commands()
     SERIAL_ECHO(cmdbuffer[bufindr]);
     SERIAL_ECHOLNPGM("\"");
   }
-
   ClearToSend();
 }
 
@@ -1634,10 +1654,10 @@ void FlushSerialRequestResend()
 void ClearToSend()
 {
   previous_millis_cmd = millis();
-  #ifdef SDSUPPORT
+#ifdef SDSUPPORT
   if(fromsd[bufindr])
     return;
-  #endif //SDSUPPORT
+#endif //SDSUPPORT
   SERIAL_PROTOCOLLNPGM(MSG_OK); 
 }
 
@@ -1647,51 +1667,50 @@ void get_coordinates()
   for(int8_t i=0; i < NUM_AXIS; i++) {
     if(code_seen(axis_codes[i])) 
     {
-      destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)*current_position[i];
+      destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)?current_position[i]:0;
       seen[i]=true;
     }
-    else destination[i] = current_position[i]; //Are these else lines really needed?
+    else {
+      destination[i] = current_position[i]; //Are these else lines really needed?
+    }    
   }
   if(code_seen('F')) {
     next_feedrate = code_value();
-    if(next_feedrate > 0.0) feedrate = next_feedrate;
+    if(next_feedrate > 0.0)
+      feedrate = next_feedrate;
   }
-  #ifdef FWRETRACT
-  if(autoretract_enabled)
-  if( !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
+#ifdef FWRETRACT
+  if(autoretract_enabled 
+     && !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
   {
     float echange=destination[E_AXIS]-current_position[E_AXIS];
     if(echange<-MIN_RETRACT) //retract
     {
       if(!retracted) 
-      {
-      
-      destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
-      //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
-      float correctede=-echange-retract_length;
-      //to generate the additional steps, not the destination is changed, but inversely the current position
-      current_position[E_AXIS]+=-correctede; 
-      feedrate=retract_feedrate;
-      retracted=true;
-      }
-      
+      {    
+        destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
+        //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
+        float correctede=-echange-retract_length;
+        //to generate the additional steps, not the destination is changed, but inversely the current position
+        current_position[E_AXIS]+=-correctede; 
+        feedrate=retract_feedrate;
+        retracted=true;
+      }      
     }
-    else 
-      if(echange>MIN_RETRACT) //retract_recover
+    else if(echange>MIN_RETRACT) //retract_recover
     {
       if(retracted) 
       {
-      //current_position[Z_AXIS]+=-retract_zlift;
-      //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
-      float correctede=-echange+1*retract_length+retract_recover_length; //total unretract=retract_length+retract_recover_length[surplus]
-      current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
-      feedrate=retract_recover_feedrate;
-      retracted=false;
+        //current_position[Z_AXIS]+=-retract_zlift;
+        //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
+        float correctede=-echange+1*retract_length+retract_recover_length; //total unretract=retract_length+retract_recover_length[surplus]
+        current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
+        feedrate=retract_recover_feedrate;
+        retracted=false;
       }
-    }
-    
+    }    
   }
-  #endif //FWRETRACT
+#endif //FWRETRACT
 }
 
 void get_arc_coordinates()
@@ -1722,15 +1741,15 @@ void get_arc_coordinates()
 void clamp_to_software_endstops(float target[3])
 {
   if (min_software_endstops) {
-    if (target[X_AXIS] < min_pos[X_AXIS]) target[X_AXIS] = min_pos[X_AXIS];
-    if (target[Y_AXIS] < min_pos[Y_AXIS]) target[Y_AXIS] = min_pos[Y_AXIS];
-    if (target[Z_AXIS] < min_pos[Z_AXIS]) target[Z_AXIS] = min_pos[Z_AXIS];
+    for(uint8_t i=0;i<=Z_AXIS;i++) 
+      if (target[i] < min_pos[i]) 
+        target[i] = min_pos[i];
   }
 
   if (max_software_endstops) {
-    if (target[X_AXIS] > max_pos[X_AXIS]) target[X_AXIS] = max_pos[X_AXIS];
-    if (target[Y_AXIS] > max_pos[Y_AXIS]) target[Y_AXIS] = max_pos[Y_AXIS];
-    if (target[Z_AXIS] > max_pos[Z_AXIS]) target[Z_AXIS] = max_pos[Z_AXIS];
+    for(uint8_t i=0;i<=Z_AXIS;i++)
+      if (target[i] > max_pos[i])
+        target[i] = max_pos[i];
   }
 }
 
@@ -1741,7 +1760,7 @@ void prepare_move()
   previous_millis_cmd = millis(); 
   // Do not use feedmultiply for E or Z only moves
   if( (current_position[X_AXIS] == destination [X_AXIS]) && (current_position[Y_AXIS] == destination [Y_AXIS])) {
-      plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
   }
   else {
     plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate*feedmultiply/60/100.0, active_extruder);
@@ -1777,12 +1796,12 @@ void controllerFan()
     lastMotorCheck = millis();
     
     if(!READ(X_ENABLE_PIN) || !READ(Y_ENABLE_PIN) || !READ(Z_ENABLE_PIN)
-    #if EXTRUDERS > 2
+# if EXTRUDERS > 2
        || !READ(E2_ENABLE_PIN)
-    #endif
-    #if EXTRUDER > 1
+# endif
+# if EXTRUDER > 1
        || !READ(E2_ENABLE_PIN)
-    #endif
+# endif
        || !READ(E0_ENABLE_PIN)) //If any of the drivers are enabled...    
     {
       lastMotor = millis(); //... set time to NOW so the fan will turn on
