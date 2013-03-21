@@ -907,8 +907,12 @@ ISR(TIMER0_COMPB_vect)
   //these variables are only accesible from the ISR, but static, so they don't loose their value
   static unsigned char temp_count = 0;
   static unsigned long raw_temp_0_value = 0;
+#if (TEMP_1_PIN > -1)
   static unsigned long raw_temp_1_value = 0;
+#endif
+#if (TEMP_2_PIN > -1)
   static unsigned long raw_temp_2_value = 0;
+#endif
   static unsigned long raw_temp_bed_value = 0;
   static unsigned char temp_state = 0;
   static unsigned char pwm_count = 1;
@@ -1064,8 +1068,12 @@ ISR(TIMER0_COMPB_vect)
     temp_meas_ready = true;
     temp_count = 0;
     raw_temp_0_value = 0;
+#if (TEMP_1_PIN > -1)
     raw_temp_1_value = 0;
+#endif
+#if (TEMP_2_PIN > -1)
     raw_temp_2_value = 0;
+#endif
     raw_temp_bed_value = 0;
 
 #if HEATER_0_RAW_LO_TEMP > HEATER_0_RAW_HI_TEMP

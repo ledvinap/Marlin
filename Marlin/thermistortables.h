@@ -5,6 +5,20 @@
 
 #define OVERSAMPLENR 16
 
+#ifndef THERMISTORHEATER_0
+# define THERMISTORHEATER_0 -1
+#endif
+#ifndef THERMISTORHEATER_1
+# define THERMISTORHEATER_1 -1
+#endif
+#ifndef THERMISTORHEATER_2
+# define THERMISTORHEATER_2 -1
+#endif
+#ifndef THERMISTORBED
+# define THERMISTORBED -1
+#endif
+
+
 #if (THERMISTORHEATER_0 == 1) || (THERMISTORHEATER_1 == 1)  || (THERMISTORHEATER_2 == 1) || (THERMISTORBED == 1) //100k bed thermistor
 
 const short temptable_1[][2] PROGMEM = {

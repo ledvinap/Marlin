@@ -673,7 +673,7 @@
 
 
 #ifdef MELZI
-# define LED_PIN            28
+# define LED_PIN            27
 # define FAN_PIN            4
 #else
 # define LED_PIN            -1
@@ -716,7 +716,7 @@
 #define SDPOWER            -1
 
 #ifdef MELZI
-# define SDSS               24
+# define SDSS               31
 #else
 # define SDSS               31
 #endif

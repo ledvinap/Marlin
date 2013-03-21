@@ -101,7 +101,7 @@ void LiquidCrystalRus::init(uint8_t fourbitmode, uint8_t rs, uint8_t rw, uint8_t
   begin(16, 1);  
 }
 
-void LiquidCrystalRus::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
+void LiquidCrystalRus::begin(uint8_t /* cols */, uint8_t lines, uint8_t dotsize) {
   if (lines > 1) {
     _displayfunction |= LCD_2LINE;
   }

@@ -94,10 +94,15 @@
 #endif
 
 //homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
-#define X_HOME_RETRACT_MM 5 
+#define X_HOME_RETRACT_MM 5
 #define Y_HOME_RETRACT_MM 5 
 #define Z_HOME_RETRACT_MM 1 
-//#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
+#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
+// if  following is defined and homing starts with tripped endstop, retraction is done twice so that final approach is 
+// (nearly) exactly  ?_HOME_RETRACT_MM long. Probably not unnecessary unless homing could start deep in endstop and 
+// _HOME_RETRACT_MM must be exactly honored
+// #define HOME_RETRACT_EXACT
+#define HOME_RETRACT_TRIES 3   //  homing will try to leave endstop for (?_HOME_RETRACT_MM*HOME_RETRACT_TRIES)
 
 #define AXIS_RELATIVE_MODES {false, false, false, true}
 

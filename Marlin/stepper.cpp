@@ -900,7 +900,7 @@ void st_init()
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-    while( blocks_queued()) {
+  while( blocks_queued()) {
     manage_heater();
     manage_inactivity();
     lcd_update();

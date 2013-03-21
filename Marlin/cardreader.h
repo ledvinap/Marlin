@@ -70,7 +70,7 @@ private:
 extern CardReader card;
 #define IS_SD_PRINTING (card.sdprinting)
 
-#if (SDCARDDETECT > -1)
+#if (defined(SDCARDDETECT) && SDCARDDETECT > -1)
 # ifdef SDCARDDETECTINVERTED 
 #  define IS_SD_INSERTED (READ(SDCARDDETECT)!=0)
 # else
