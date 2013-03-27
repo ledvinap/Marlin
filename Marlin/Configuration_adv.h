@@ -102,14 +102,14 @@
 #define X_HOME_RETRACT_MM 5 
 #define Y_HOME_RETRACT_MM 5 
 #define Z_HOME_RETRACT_MM 1 
-//#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
+#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
 // if  following is defined and homing starts with tripped endstop, retraction is done twice so that final approach is 
 // (nearly) exactly  ?_HOME_RETRACT_MM long. Probably not necessary unless homing could start deep in endstop and 
 // _HOME_RETRACT_MM must be exactly honored
 // #define HOME_RETRACT_EXACT
 #define HOME_RETRACT_TRIES 3   //  homing will try to leave endstop for (?_HOME_RETRACT_MM*HOME_RETRACT_TRIES)
 
-#define AXIS_RELATIVE_MODES {false, false, false, false}
+#define AXIS_RELATIVE_MODES {false, false, false, true}
 
 #define MAX_STEP_FREQUENCY 40000 // Max step frequency for Ultimaker (5000 pps / half step)
 
@@ -120,7 +120,7 @@
 #define INVERT_E_STEP_PIN false
 
 //default stepper release if idle
-#define DEFAULT_STEPPER_DEACTIVE_TIME 60
+#define DEFAULT_STEPPER_DEACTIVE_TIME 0
 
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
@@ -204,7 +204,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // You can get round this by connecting a push button or single throw switch to the pin defined as SDCARDCARDDETECT 
 // in the pins.h file.  When using a push button pulling the pin to ground this will need inverted.  This setting should
 // be commented out otherwise
-#define SDCARDDETECTINVERTED 
+//#define SDCARDDETECTINVERTED
 
 #ifdef ULTIPANEL
  #undef SDCARDDETECTINVERTED
@@ -251,7 +251,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 // the moves are than replaced by the firmware controlled ones.
 
 // #define FWRETRACT  //ONLY PARTIALLY TESTED
-#define MIN_RETRACT 0.1 //minimum extruded mm to accept a automatic gcode retraction attempt
+//#define MIN_RETRACT 0.1 //minimum extruded mm to accept a automatic gcode retraction attempt
 
 
 //adds support for experimental filament exchange support M600; requires display
