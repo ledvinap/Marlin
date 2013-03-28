@@ -2,8 +2,8 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectVersion>6.0</ProjectVersion>
-    <ToolchainName>com.Atmel.AVRGCC8</ToolchainName>
+    <ProjectVersion>6.1</ProjectVersion>
+    <ToolchainName>com.Atmel.AVRGCC8.CPP</ToolchainName>
     <ProjectGuid>{6d215b4d-90fd-47af-be13-e5338dcf249b}</ProjectGuid>
     <avrdevice>ATmega1284P</avrdevice>
     <avrdeviceseries>none</avrdeviceseries>
@@ -82,32 +82,49 @@
         </InterfaceProperties>
       </ToolOptions>
     </com_atmel_avrdbg_tool_stk500>
+    <AsfFrameworkConfig>
+      <framework-data xmlns="">
+  <options />
+  <configurations />
+  <files />
+  <documentation help="" />
+  <dependencies>
+    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.5.0" />
+  </dependencies>
+</framework-data>
+    </AsfFrameworkConfig>
+    <ProgFlashFromRam>true</ProgFlashFromRam>
+    <RamSnippetAddress>0x20000000</RamSnippetAddress>
+    <CacheFlash>true</CacheFlash>
+    <UncachedRange />
+    <BootSegment>0</BootSegment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
-      <AvrGccCpp>
-        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
-        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
-        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
-        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
-        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-        <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
-        <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
-        <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
-        <avrgcccpp.linker.libraries.Libraries>
-          <ListValues>
-            <Value>m</Value>
-          </ListValues>
-        </avrgcccpp.linker.libraries.Libraries>
-      </AvrGccCpp>
+      <AvrGccCpp xmlns="">
+  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+  <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+  <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+  <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+  <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
+  <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
+  <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
+  <avrgcccpp.linker.libraries.Libraries>
+    <ListValues>
+      <Value>libm</Value>
+    </ListValues>
+  </avrgcccpp.linker.libraries.Libraries>
+  <avrgcccpp.linker.memorysettings.Comment>&lt;segmentname&gt;=&lt;address&gt;, for example  .boot=0xff</avrgcccpp.linker.memorysettings.Comment>
+</AvrGccCpp>
     </ToolchainSettings>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -125,8 +142,12 @@
       <Value>ARDUINO=103</Value>
     </ListValues>
   </avrgcc.compiler.symbols.DefSymbols>
+  <avrgcc.compiler.directories.IncludePaths>
+    <ListValues>
+      <Value>../../../ArduinoAddons/Arduino_1.x.x/sanguino/cores/arduino</Value>
+    </ListValues>
+  </avrgcc.compiler.directories.IncludePaths>
   <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-  <avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>True</avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>
   <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
   <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
   <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
@@ -144,13 +165,12 @@
   </avrgcccpp.compiler.symbols.DefSymbols>
   <avrgcccpp.compiler.directories.IncludePaths>
     <ListValues>
-      <Value>D:\sw\arduino-1.0.3\hardware\Melzi\cores\arduino</Value>
-      <Value>d:\sw\arduino-1.0.3\libraries\LiquidCrystal</Value>
-      <Value>D:\sw\arduino-1.0.3\libraries\SPI</Value>
+      <Value>../../../ArduinoAddons/Arduino_1.x.x/Melzi/cores/arduino</Value>
+      <Value>../../../ArduinoAddons/Arduino_1.x.x/libraries/LiquidCrystal</Value>
+      <Value>../../../ArduinoAddons/Arduino_1.x.x/libraries/SPI</Value>
     </ListValues>
   </avrgcccpp.compiler.directories.IncludePaths>
   <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
-  <avrgcccpp.compiler.optimization.PrepareFunctionsForGarbageCollection>True</avrgcccpp.compiler.optimization.PrepareFunctionsForGarbageCollection>
   <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
   <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
   <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
@@ -160,8 +180,7 @@
   <avrgcccpp.compiler.miscellaneous.DoNotDeleteTemporaryFiles>True</avrgcccpp.compiler.miscellaneous.DoNotDeleteTemporaryFiles>
   <avrgcccpp.linker.libraries.Libraries>
     <ListValues>
-      <Value>m</Value>
-      <Value>core</Value>
+      <Value>libm</Value>
     </ListValues>
   </avrgcccpp.linker.libraries.Libraries>
   <avrgcccpp.linker.libraries.LibrarySearchPaths>
@@ -169,6 +188,7 @@
       <Value>..</Value>
     </ListValues>
   </avrgcccpp.linker.libraries.LibrarySearchPaths>
+  <avrgcccpp.linker.memorysettings.Comment>&lt;segmentname&gt;=&lt;address&gt;, for example  .boot=0xff</avrgcccpp.linker.memorysettings.Comment>
   <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
 </AvrGccCpp>
     </ToolchainSettings>
@@ -356,7 +376,7 @@
     <Folder Include="lib" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="libcore.a">
+    <None Include="..\ArduinoCore\Debug\libcore.a">
       <SubType>compile</SubType>
       <Link>lib\libcore.a</Link>
     </None>

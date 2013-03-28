@@ -2,6 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Atmel Studio Solution File, Format Version 11.00
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Marlin", "Marlin.cppproj", "{6D215B4D-90FD-47AF-BE13-E5338DCF249B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{75C6F865-DADD-4159-A949-8C0E873C8D4A} = {75C6F865-DADD-4159-A949-8C0E873C8D4A}
+	EndProjectSection
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "ArduinoCore", "..\ArduinoCore\ArduinoCore.cppproj", "{75C6F865-DADD-4159-A949-8C0E873C8D4A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +18,10 @@ Global
 		{6D215B4D-90FD-47AF-BE13-E5338DCF249B}.Debug|AVR.Build.0 = Debug|AVR
 		{6D215B4D-90FD-47AF-BE13-E5338DCF249B}.Release|AVR.ActiveCfg = Release|AVR
 		{6D215B4D-90FD-47AF-BE13-E5338DCF249B}.Release|AVR.Build.0 = Release|AVR
+		{75C6F865-DADD-4159-A949-8C0E873C8D4A}.Debug|AVR.ActiveCfg = Debug|AVR
+		{75C6F865-DADD-4159-A949-8C0E873C8D4A}.Debug|AVR.Build.0 = Debug|AVR
+		{75C6F865-DADD-4159-A949-8C0E873C8D4A}.Release|AVR.ActiveCfg = Release|AVR
+		{75C6F865-DADD-4159-A949-8C0E873C8D4A}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
