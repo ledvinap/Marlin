@@ -322,9 +322,9 @@
       <SubType>compile</SubType>
       <Link>temperature.cpp</Link>
     </Compile>
-    <Compile Include="..\..\Marlin\temperature.h">
+    <Compile Include="..\..\Marlin\thermistortable.c">
       <SubType>compile</SubType>
-      <Link>Headers\temperature.h</Link>
+      <Link>thermistortable.c</Link>
     </Compile>
     <Compile Include="..\..\Marlin\thermistortables.h">
       <SubType>compile</SubType>
