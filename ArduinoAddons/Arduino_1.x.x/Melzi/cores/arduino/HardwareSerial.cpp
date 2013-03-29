@@ -276,6 +276,7 @@ size_t HardwareSerial::write(uint8_t c)
     ;
 
   *_udr = c;
+  return 1;
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
