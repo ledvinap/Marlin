@@ -145,7 +145,7 @@ void CardReader::initsd()
   cardOK = false;
   if(root.isOpen())
     root.close();
-  if (!card.init(SPI_FULL_SPEED,SDSS))
+  if (!card.init(SPI_FULL_SPEED))
   {
     //if (!card.init(SPI_HALF_SPEED,SDSS))
     SERIAL_ECHO_START;
@@ -229,12 +229,12 @@ void CardReader::openFile(char* name,bool read)
   if(name[0]=='/')
   {
     dirname_start=strchr(name,'/')+1;
-    while(dirname_start>0)
+    while(dirname_start)
     {
       dirname_end=strchr(dirname_start,'/');
       //SERIAL_ECHO("start:");SERIAL_ECHOLN((int)(dirname_start-name));
       //SERIAL_ECHO("end  :");SERIAL_ECHOLN((int)(dirname_end-name));
-      if(dirname_end>0 && dirname_end>dirname_start)
+      if(dirname_end && dirname_end>dirname_start)
       {
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);
@@ -325,12 +325,12 @@ void CardReader::removeFile(char* name)
   if(name[0]=='/')
   {
     dirname_start=strchr(name,'/')+1;
-    while(dirname_start>0)
+    while(dirname_start)
     {
       dirname_end=strchr(dirname_start,'/');
       //SERIAL_ECHO("start:");SERIAL_ECHOLN((int)(dirname_start-name));
       //SERIAL_ECHO("end  :");SERIAL_ECHOLN((int)(dirname_end-name));
-      if(dirname_end>0 && dirname_end>dirname_start)
+      if(dirname_end && dirname_end>dirname_start)
       {
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);

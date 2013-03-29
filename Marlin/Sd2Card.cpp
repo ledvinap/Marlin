@@ -205,14 +205,14 @@ uint32_t Sd2Card::cardSize() {
 }
 //------------------------------------------------------------------------------
 void Sd2Card::chipSelectHigh() {
-  digitalWrite(chipSelectPin_, HIGH);
+  fastDigitalWrite(SDSS, HIGH);
 }
 //------------------------------------------------------------------------------
 void Sd2Card::chipSelectLow() {
 #ifndef SOFTWARE_SPI
   spiInit(spiRate_);
 #endif  // SOFTWARE_SPI
-  digitalWrite(chipSelectPin_, LOW);
+  fastDigitalWrite(SDSS, LOW);
 }
 //------------------------------------------------------------------------------
 /** Erase a range of blocks.
@@ -283,15 +283,14 @@ bool Sd2Card::eraseSingleBlockEnable() {
  * the value zero, false, is returned for failure.  The reason for failure
  * can be determined by calling errorCode() and errorData().
  */
-bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
+bool Sd2Card::init(uint8_t sckRateID) {
   errorCode_ = type_ = 0;
-  chipSelectPin_ = chipSelectPin;
   // 16-bit init start time allows over a minute
   uint16_t t0 = (uint16_t)millis();
   uint32_t arg;
 
   // set pin modes
-  pinMode(chipSelectPin_, OUTPUT);
+  pinMode(SDSS, OUTPUT);
   chipSelectHigh();
   pinMode(SPI_MISO_PIN, INPUT);
   pinMode(SPI_MOSI_PIN, OUTPUT);
