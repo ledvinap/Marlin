@@ -231,7 +231,7 @@ FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity
 
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
-void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
+void planner_reverse_pass_kernel(block_t */*previous*/, block_t *current, block_t *next) {
   if(!current) { 
     return; 
   }
@@ -282,7 +282,7 @@ void planner_reverse_pass() {
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
-void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *next) {
+void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t */*next*/) {
   if(!previous) { 
     return; 
   }
