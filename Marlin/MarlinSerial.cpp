@@ -134,10 +134,6 @@ void MarlinSerial::flush()
   // occurs after reading the value of rx_buffer_head but before writing
   // the value to rx_buffer_tail; the previous value of rx_buffer_head
   // may be written to rx_buffer_tail, making it appear as if the buffer
-  // don't reverse this or there may be problems if the RX interrupt
-  // occurs after reading the value of rx_buffer_head but before writing
-  // the value to rx_buffer_tail; the previous value of rx_buffer_head
-  // may be written to rx_buffer_tail, making it appear as if the buffer
   // were full, not empty.
   rx_buffer.head = rx_buffer.tail;
 }
@@ -266,7 +262,7 @@ void MarlinSerial::printNumber(unsigned long n, uint8_t base)
   if (n == 0) {
     print('0');
     return;
-  } 
+  }
 
   while (n > 0) {
     buf[i++] = n % base;
