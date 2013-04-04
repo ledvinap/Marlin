@@ -72,12 +72,21 @@
 // is the index of the location from which to read.
 #define RX_BUFFER_SIZE 128
 
+#if RX_BUFFER_SIZE&(RX_BUFFER_SIZE-1)
+# warn "RX_BUFFER_SIZE is not power of two, code will be suboptimal"
+#endif
+
+#if RX_BUFFER_SIZE<=256
+typedef unsigned char ring_buffer_idx;
+#else
+typedef unsigned short ring_buffer_idx;
+#endif
 
 struct ring_buffer
 {
   unsigned char buffer[RX_BUFFER_SIZE];
-  int head;
-  int tail;
+  ring_buffer_idx head;
+  ring_buffer_idx tail;
 };
 
 #if UART_PRESENT(SERIAL_PORT)
@@ -113,7 +122,7 @@ class MarlinSerial //: public Stream
     {
       if((M_UCSRxA & (1<<M_RXCx)) != 0) {
         unsigned char c  =  M_UDRx;
-        int i = (unsigned int)(rx_buffer.head + 1) % RX_BUFFER_SIZE;
+        ring_buffer_idx i = (rx_buffer.head + 1) % RX_BUFFER_SIZE;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
