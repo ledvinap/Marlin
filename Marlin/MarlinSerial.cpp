@@ -34,7 +34,7 @@
 
 FORCE_INLINE void store_char(unsigned char c)
 {
-  ring_buffer_idx i = (rx_buffer.head + 1) % RX_BUFFER_SIZE;
+  ring_buffer_idx_t i = (rx_buffer.head + 1) % RX_BUFFER_SIZE;
 
   // if we should be storing the received character into the location
   // just before the tail (meaning that the head would advance to the
